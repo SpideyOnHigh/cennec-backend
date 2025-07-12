@@ -141,4 +141,14 @@ if (!function_exists('formatValidationErrors')) {
         }
         return $formattedErrors;
     }
+
+    function CommonMessage($code, $message, $data = null, $count = null)
+    {
+        return response()->json([
+            'code' => $code,
+            'message' => $message,
+            'data' => $data,
+            'count' => $count
+        ]);
+    }
 }

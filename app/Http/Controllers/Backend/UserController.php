@@ -7,6 +7,7 @@ use App\Http\Requests\UserUpdateRequest;
 use App\Models\User;
 use App\Models\UserProfileImage;
 use App\Services\UserService;
+use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -128,5 +129,36 @@ class UserController extends Controller
             return redirect()->route('users.index')->with('success', 'Deleted successfully!');
         }
         return redirect()->back()->with('error', 'You do not have access to do this action. Please try again!');
+    }
+
+    public function contactNumberFilter(Request $request)
+    {
+        try {
+            $contactNumbers = $request->input('contacts', []);
+            $result = [];
+
+            foreach ($contactNumbers as $number) {
+                $exists = User::where('contact', $number)->exists();
+                $result[] = [
+                    'contact' => $number,
+                    'exists' => $exists,
+                ];
+            }
+
+            return response()->json([
+                'code' => 200,
+                'message' => 'Contact number existence checked successfully.',
+                'data' => $result,
+                'count' => 1,
+            ]);
+        } catch (Exception $e) {
+            report($e);
+            return response()->json([
+                'code' => 500,
+                'message' => $e->getMessage(),
+                'data' => '',
+                'count' => '',
+            ]);
+        }
     }
 }

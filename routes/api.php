@@ -6,6 +6,8 @@ use App\Http\Controllers\Backend\Api\v1\ChatMessageController;
 use App\Http\Controllers\Backend\Api\v1\InterestController;
 use App\Http\Controllers\Backend\Api\v1\PolicyController;
 use App\Http\Controllers\Backend\Api\v1\NotificationController;
+use App\Http\Controllers\Backend\PostController;
+use App\Http\Controllers\Backend\UserController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -83,4 +85,12 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/default-user-image', [AccountController::class, 'defaultUserImage']);
     Route::post('/remove-user', [AccountController::class, 'removeUser']);
     Route::get('pending-req-list', [AccountController::class, 'getPendingReqs']);
+
+    //Contact Number Filter
+    Route::post('contact-number-filter', [UserController::class, 'contactNumberFilter']);
+
+    // User Posts
+    Route::post('/add-user-post', [PostController::class, 'addUserPost']);
+
+    Route::post('/user-posts', [PostController::class, 'getMatchedPosts']);
 });
