@@ -93,4 +93,6 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/add-user-post', [PostController::class, 'addUserPost']);
 
     Route::post('/user-posts', [PostController::class, 'getMatchedPosts']);
+    Route::post('/get-similar-posts', [PostController::class, 'getSimilatPost']);
+    Route::post('/get-interest-matched-posts', [PostController::class, 'getInterestMatchedPosts']);
 });
