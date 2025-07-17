@@ -362,7 +362,7 @@ class PostController extends Controller
         try {
             $userDetail = [];
             $userImages = UserProfileImage::where('user_id', $user_id)
-            ->get();
+                ->get();
             $defaultImage = $userImages->where('is_default', true)->value('image_name');
             if (!is_null($defaultImage)) {
                 $defaultImage = concatAppUrl($defaultImage);
@@ -388,6 +388,94 @@ class PostController extends Controller
         } catch (Exception $e) {
             report($e);
             return false;
+        }
+    }
+
+    public function getAllPosts(Request $request)
+    {
+        try {
+            $authUser = Auth::user();
+
+            $authInterestIds = UserInterest::where('user_id', $authUser->id)
+                ->pluck('interest_id')
+                ->toArray();
+
+            // Request inputs
+            $skip = $request->skip ?? 0;
+            $take = $request->take ?? 10;
+            $orderBy = $request->order_by ?? 'interest_match_count';
+            $sortDirection = $request->sort ?? 'desc';
+
+            // All posts (excluding auth user)
+            $allPosts = UserPosts::where('user_id', '!=', $authUser->id)
+                ->with('user')
+                ->get();
+
+            // Filter and process only posts that have interest matches
+            $filtered = $allPosts->filter(function ($post) use ($authInterestIds) {
+                $postUserInterests = UserInterest::where('user_id', $post->user_id)
+                    ->pluck('interest_id')
+                    ->toArray();
+
+                $matchedInterests = array_intersect($authInterestIds, $postUserInterests);
+                
+
+                return count($matchedInterests) > 0;
+            })->values();
+
+            // Now map only filtered posts
+            $processed = $filtered->map(function ($post) use ($authInterestIds) {
+                $postUserInterests = UserInterest::where('user_id', $post->user_id)
+                    ->pluck('interest_id')
+                    ->toArray();
+
+                $matchedInterests = array_intersect($authInterestIds, $postUserInterests);
+
+                $user_profile = UserProfileImage::where('user_id', $post->user_id)
+                    ->where('is_default', true)->first();
+
+                return [
+                    'id' => $post->id,
+                    'user_id' => $post->user_id,
+                    'user_name' => $post->user->name ?? '',
+                    'activity' => $post->activity,
+                    'location' => $post->location,
+                    'meet_at' => $post->meet_at,
+                    'meet_with' => $post->meet_with,
+                    'discussion_topic' => $post->discussion_topic,
+                    'description' => $post->description,
+                    'created_at' => $post->created_at,
+                    'interest_match_count' => count($matchedInterests),
+                    'user_image' => $user_profile ? concatAppUrl($user_profile->image_name) : null,
+                ];
+            });
+
+            // Sort posts
+            $sorted = $processed->sortBy([
+                [$orderBy, $sortDirection]
+            ])->values();
+
+            // Pagination
+            $paginated = $sorted->slice($skip, $take)->values();
+            $total = $sorted->count();
+            $currentPage = floor($skip / $take) + 1;
+
+            return response()->json([
+                'code' => 200,
+                'message' => 'Post List',
+                'data' => $paginated,
+                'count' => $paginated->count(),
+                'total' => $total,
+                'current_page' => $currentPage,
+                'per_page' => $take,
+            ]);
+        } catch (Exception $e) {
+            report($e);
+            return response()->json([
+                'code' => 500,
+                'message' => 'Something went wrong.',
+                'data' => [],
+            ]);
         }
     }
 }
