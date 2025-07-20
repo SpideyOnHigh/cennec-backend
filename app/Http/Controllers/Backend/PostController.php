@@ -88,11 +88,13 @@ class PostController extends Controller
 
                 // Field match scoring
                 $matchFields = 0;
-                if ($post->activity === $request->activity) $matchFields++;
-                if ($post->location === $request->location) $matchFields++;
-                if ($post->meet_at === $request->meet_at) $matchFields++;
-                if ($post->meet_with === $request->meet_with) $matchFields++;
-                if ($post->discussion_topic === $request->discussion_topic) $matchFields++;
+
+                if (!empty($request->activity) && strtolower(trim($post->activity)) === strtolower(trim($request->activity))) $matchFields++;
+                if (!empty($request->location) && strtolower(trim($post->location)) === strtolower(trim($request->location))) $matchFields++;
+                if (!empty($request->meet_at) && strtolower(trim($post->meet_at)) === strtolower(trim($request->meet_at))) $matchFields++;
+                if (!empty($request->meet_with) && strtolower(trim($post->meet_with)) === strtolower(trim($request->meet_with))) $matchFields++;
+                if (!empty($request->discussion_topic) && strtolower(trim($post->discussion_topic)) === strtolower(trim($request->discussion_topic))) $matchFields++;
+
                 $matchPercentage = $matchFields * 20;
 
                 // Interest list
@@ -181,11 +183,12 @@ class PostController extends Controller
 
                 // 1. Field match scoring (5 fields = 100%)
                 $matchFields = 0;
-                if ($post->activity === $request->activity) $matchFields++;
-                if ($post->location === $request->location) $matchFields++;
-                if ($post->meet_at === $request->meet_at) $matchFields++;
-                if ($post->meet_with === $request->meet_with) $matchFields++;
-                if ($post->discussion_topic === $request->discussion_topic) $matchFields++;
+                if (!empty($request->activity) && strtolower(trim($post->activity)) === strtolower(trim($request->activity))) $matchFields++;
+                if (!empty($request->location) && strtolower(trim($post->location)) === strtolower(trim($request->location))) $matchFields++;
+                if (!empty($request->meet_at) && strtolower(trim($post->meet_at)) === strtolower(trim($request->meet_at))) $matchFields++;
+                if (!empty($request->meet_with) && strtolower(trim($post->meet_with)) === strtolower(trim($request->meet_with))) $matchFields++;
+                if (!empty($request->discussion_topic) && strtolower(trim($post->discussion_topic)) === strtolower(trim($request->discussion_topic))) $matchFields++;
+
                 $matchPercentage = $matchFields * 20;
 
                 // 2. Prepare interest list
