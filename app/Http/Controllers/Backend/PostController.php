@@ -418,13 +418,13 @@ class PostController extends Controller
                     ->toArray();
 
                 $matchedInterests = array_intersect($authInterestIds, $postUserInterests);
-                
+
 
                 return count($matchedInterests) > 0;
             })->values();
 
             // Now map only filtered posts
-            $processed = $filtered->map(function ($post) use ($authInterestIds) {
+            $processed = $filtered->map(function ($post) use ($authInterestIds, $authUser) {
                 $postUserInterests = UserInterest::where('user_id', $post->user_id)
                     ->pluck('interest_id')
                     ->toArray();
@@ -433,7 +433,7 @@ class PostController extends Controller
 
                 $user_profile = UserProfileImage::where('user_id', $post->user_id)
                     ->where('is_default', true)->first();
-
+                $is_friend = PostController::isFriend($authUser->id, $post->user_id);
                 return [
                     'id' => $post->id,
                     'user_id' => $post->user_id,
@@ -447,6 +447,8 @@ class PostController extends Controller
                     'created_at' => $post->created_at,
                     'interest_match_count' => count($matchedInterests),
                     'user_image' => $user_profile ? concatAppUrl($user_profile->image_name) : null,
+                    'is_friend' => $is_friend,
+
                 ];
             });
 
