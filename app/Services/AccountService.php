@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Http\Controllers\Backend\PostController;
 use App\Models\FeedbackTypeMaster;
 use App\Models\InterestMaster;
 use App\Models\Notification;
@@ -716,6 +717,7 @@ class AccountService
 
     public function getMyConnections(int $userId, $perPage = 100000, $page = 1)
     {
+        $auth_userId = $userId;
         $requests = UserRequest::where(function ($query) use ($userId) {
             $query->where('from_user_id', $userId)
                 ->orWhere('to_user_id', $userId);
@@ -739,6 +741,8 @@ class AccountService
             return $request->from_user_id == $userId ? $request->to_user_id : $request->from_user_id;
         })->unique()->toArray();
 
+        $authuserInterestIds = UserInterest::where('user_id', $auth_userId)->pluck('interest_id')->toArray();
+
         $blockedUsers = UserBlock::where('blocked_by_user_id', $userId)
             ->where('blocked_status', 'blocked')
             ->pluck('blocked_user_id')
@@ -748,9 +752,8 @@ class AccountService
             ->pluck('reported_user_id')
             ->toArray();
 
-        $connections = $requests->getCollection()->map(function ($request) use ($userId, $blockedUsers, $reportedUsers) {
+        $connections = $requests->getCollection()->map(function ($request) use ($userId, $blockedUsers, $reportedUsers, $authuserInterestIds) {
             $user = $request->from_user_id == $userId ? $request->toUser : $request->fromUser;
-
             if (in_array($user->id, $blockedUsers)) {
                 return null;
             }
@@ -762,11 +765,24 @@ class AccountService
             if (!is_null($defaultImage)) {
                 $default_profile_picture = concatAppUrl($defaultImage);
             }
+            $user_info = User::getUserInfo($user->id);
+            $UserInterestIds = UserInterest::where('user_id', $user->id)->pluck('interest_id')->toArray();
+
+            // Interest list
+            $interestData = InterestMaster::whereIn('id', $UserInterestIds)->get()->map(function ($interest) use ($authuserInterestIds) {
+                return [
+                    'interest_name' => $interest->interest_name,
+                    'interest_match' => in_array($interest->id, $authuserInterestIds),
+                ];
+            });
+
             return [
                 'id' => $user->id,
                 'name' => $user->username,
                 'email' => $user->email,
                 'default_profile_picture' => $default_profile_picture,
+                'user_info' => $user_info,
+                'user_interest' => $interestData,
                 'profile_images' => $user->profileImages->map(function ($image) {
                     return [
                         'image_id' => $image->id,
@@ -789,6 +805,7 @@ class AccountService
 
     public function getMyFavoriteUsers(int $userId, $perPage = 100000, $page = 1)
     {
+        $auth_userId = $userId;
         $favoritedUsersQuery = User::findOrFail($userId)
             ->favoritedUsers()
             ->with('favoritedUser.profileImages')
@@ -810,6 +827,8 @@ class AccountService
             return $userFavorite->favoritedUser->id;
         })->unique()->toArray();
 
+        $authuserInterestIds = UserInterest::where('user_id', $auth_userId)->pluck('interest_id')->toArray();
+
         $blockedUsers = UserBlock::where('blocked_by_user_id', $userId)
             ->where('blocked_status', 'blocked')
             ->pluck('blocked_user_id')
@@ -824,7 +843,7 @@ class AccountService
             ->toArray();
         $authUserId = auth()->id();
 
-        $filteredFavoriteUsers = $favoritedUsers->getCollection()->map(function ($userFavorite) use ($blockedUsers, $reportedUsers, $removedUsers, $authUserId) {
+        $filteredFavoriteUsers = $favoritedUsers->getCollection()->map(function ($userFavorite) use ($blockedUsers, $reportedUsers, $removedUsers, $authUserId,$authuserInterestIds) {
             $user = $userFavorite->favoritedUser;
 
             if (in_array($user->id, $blockedUsers)) {
@@ -852,12 +871,25 @@ class AccountService
             if (!is_null($defaultImage)) {
                 $default_profile_picture = concatAppUrl($defaultImage);
             }
+
+            $user_info = User::getUserInfo($user->id);
+            $UserInterestIds = UserInterest::where('user_id', $user->id)->pluck('interest_id')->toArray();
+
+            // Interest list
+            $interestData = InterestMaster::whereIn('id', $UserInterestIds)->get()->map(function ($interest) use ($authuserInterestIds) {
+                return [
+                    'interest_name' => $interest->interest_name,
+                    'interest_match' => in_array($interest->id, $authuserInterestIds),
+                ];
+            });
             return [
                 'id' => $user->id,
                 'name' => $user->username,
                 'email' => $user->email,
                 'is_connected' => $isConnected,
                 'default_profile_picture' => $default_profile_picture,
+                'user_info' => $user_info,
+                'user_interest' => $interestData,
                 'profile_images' => $user->profileImages->map(function ($image) {
                     return [
                         'image_id' => $image->id,

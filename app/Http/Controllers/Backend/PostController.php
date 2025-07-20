@@ -106,7 +106,7 @@ class PostController extends Controller
                 // Mutual connections
                 $mutualConnectionCount = PostController::getMutualConnectionCount($authUser->id, $postUser->id);
                 $is_friend = PostController::isFriend($authUser->id, $postUser->id);
-                $user_info = PostController::getUserInfo($postUser->id);
+                $user_info = User::getUserInfo($postUser->id);
 
                 return [
                     'id' => $post->id,
@@ -199,7 +199,7 @@ class PostController extends Controller
                 // 3. Mutual connections
                 $mutualConnectionCount = PostController::getMutualConnectionCount($authUser->id, $postUser->id);
                 $is_friend = PostController::isFriend($authUser->id, $postUser->id);
-                $user_info = PostController::getUserInfo($postUser->id);
+                $user_info = User::getUserInfo($postUser->id);
 
                 return [
                     'id' => $post->id,
@@ -251,7 +251,7 @@ class PostController extends Controller
 
                     $mutualConnectionCount = PostController::getMutualConnectionCount($authUser->id, $postUser->id);
                     $is_friend = PostController::isFriend($authUser->id, $postUser->id);
-                    $user_info = PostController::getUserInfo($postUser->id);
+                    $user_info = User::getUserInfo($postUser->id);
 
 
                     $postData = [
@@ -355,40 +355,6 @@ class PostController extends Controller
         })
             ->where('request_status', 'accepted')
             ->exists();
-    }
-
-    public function getUserInfo($user_id)
-    {
-        try {
-            $userDetail = [];
-            $userImages = UserProfileImage::where('user_id', $user_id)
-                ->get();
-            $defaultImage = $userImages->where('is_default', true)->value('image_name');
-            if (!is_null($defaultImage)) {
-                $defaultImage = concatAppUrl($defaultImage);
-            } else {
-                $defaultImage = null;
-            }
-            $user_bio = UserDetail::where('user_id', $user_id)->first();
-            $userDetail['bio'] = $user_bio ? $user_bio->bio : '';
-            $userDetail['default_profile_picture'] = $defaultImage;
-            $userDetail['profile_pictures'] = $userImages->map(function ($image) {
-                return [
-                    'image_id' => $image->id,
-                    'image_url' => concatAppUrl($image->image_name),
-                    'is_default' => boolval($image->is_default),
-                ];
-            });
-            $user_latest_post = UserPosts::where('user_id', $user_id)
-                ->take(5)
-                ->orderBy('created_at', 'desc')
-                ->get();
-            $userDetail['latest_posts'] = $user_latest_post;
-            return $userDetail;
-        } catch (Exception $e) {
-            report($e);
-            return false;
-        }
     }
 
     public function getAllPosts(Request $request)
