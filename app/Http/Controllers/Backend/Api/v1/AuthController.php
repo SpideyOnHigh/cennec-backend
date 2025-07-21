@@ -731,6 +731,18 @@ class AuthController extends Controller
                         'is_default' => boolval($image->is_default),
                     ];
                 });
+                $user_interests = UserInterest::select(
+                    'user_interests.id',
+                    'user_interests.interest_id',
+                    'interest_masters.interest_name',
+                    'interest_masters.interest_color',
+                    'interest_masters.interest_icon'
+                )
+                    ->join('interest_masters', 'user_interests.interest_id', '=', 'interest_masters.id')
+                    ->where('user_interests.user_id', $user->id)
+                    ->get();
+
+                $userData->interests = $user_interests;
                 $hasInterests = UserInterest::where('user_id', $user->id)->count() > 0;
                 $user->tokens()->delete();
 
