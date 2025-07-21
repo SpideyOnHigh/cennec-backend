@@ -400,6 +400,13 @@ class PostController extends Controller
 
                 $matchedInterests = array_intersect($authInterestIds, $postUserInterests);
 
+                 // Interest list
+                $interestData = InterestMaster::whereIn('id', $postUserInterests)->get()->map(function ($interest) use ($authInterestIds) {
+                    return [
+                        'interest_name' => $interest->interest_name,
+                        'interest_match' => in_array($interest->id, $authInterestIds),
+                    ];
+                });
                 $user_profile = UserProfileImage::where('user_id', $post->user_id)
                     ->where('is_default', true)->first();
                 $is_friend = PostController::isFriend($authUser->id, $post->user_id);
@@ -415,6 +422,7 @@ class PostController extends Controller
                     'description' => $post->description,
                     'created_at' => $post->created_at,
                     'interest_match_count' => count($matchedInterests),
+                    'user_interest' => $interestData,
                     'user_image' => $user_profile ? concatAppUrl($user_profile->image_name) : null,
                     'is_friend' => $is_friend,
 
