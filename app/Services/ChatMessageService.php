@@ -65,30 +65,47 @@ class ChatMessageService
 
     public function getRecentChatUsers($userId)
     {
+        // $recentMessages = UserMessages::selectRaw('
+        //     CASE
+        //         WHEN sender_user_id = ? THEN receiver_user_id
+        //         ELSE sender_user_id
+        //     END as user_id, MAX(updated_at) as latest_message_time
+        // ', [$userId])
+        //     ->where('sender_user_id', $userId)
+        //     ->orWhere('receiver_user_id', $userId)
+        //     ->groupBy('user_id')
+        //     ->toBase();
+
         $recentMessages = UserMessages::selectRaw('
-            CASE
-                WHEN sender_user_id = ? THEN receiver_user_id
-                ELSE sender_user_id
-            END as user_id, MAX(updated_at) as latest_message_time
-        ', [$userId])
+        CASE
+            WHEN sender_user_id = ? THEN receiver_user_id
+            ELSE sender_user_id
+        END as user_id,
+        MAX(id) as latest_message_id
+    ', [$userId])
             ->where('sender_user_id', $userId)
             ->orWhere('receiver_user_id', $userId)
-            ->groupBy('user_id')
-            ->toBase();
+            ->groupBy('user_id');
+
 
         $users = User::joinSub($recentMessages, 'recent_messages', function ($join) {
             $join->on('users.id', '=', 'recent_messages.user_id');
         })
+            ->join('user_messages as um', 'um.id', '=', 'recent_messages.latest_message_id')
             ->join('user_requests', function ($join) use ($userId) {
                 $join->where(function ($query) use ($userId) {
                     $query->where('user_requests.from_user_id', $userId)
                         ->orWhere('user_requests.to_user_id', $userId);
                 });
             })
-            ->where('user_requests.request_status', 'accepted') // Filter for accepted requests
-            ->select('users.*', 'recent_messages.latest_message_time')
+            ->where('user_requests.request_status', 'accepted')
+            ->select(
+                'users.*',
+                'um.message_content as last_message',
+                'um.updated_at as latest_message_time'
+            )
             ->where('users.id', '!=', $userId)
-            ->orderBy('recent_messages.latest_message_time', 'desc')
+            ->orderByDesc('um.updated_at')
             ->get();
 
         $userIds = $users->pluck('id');
