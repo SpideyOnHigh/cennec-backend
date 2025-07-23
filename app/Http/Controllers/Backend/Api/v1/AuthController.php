@@ -218,8 +218,8 @@ class AuthController extends Controller
             'dob' => 'required|date_format:m-d-Y',
             'gender' => 'required|integer|in:1,2,3',
             'location' => 'nullable|string',
-            'invitation_code' => 'required|string|exists:invitation_code_masters,code',
-            'invitation_code' => 'nullable|string|exists:invitation_code_masters,code',
+            // 'invitation_code' => 'required|string|exists:invitation_code_masters,code',
+            // 'invitation_code' => 'nullable|string|exists:invitation_code_masters,code',
             'lat' => 'nullable|numeric',
             'lng' => 'nullable|numeric',
             'fcm_token' => 'nullable|string',
@@ -260,25 +260,25 @@ class AuthController extends Controller
         DB::beginTransaction();
 
         try {
-            $invitationCode = InvitationCodeMaster::where('code', $request->invitation_code)->first();
+            // $invitationCode = InvitationCodeMaster::where('code', $request->invitation_code)->first();
 
-            if (! $invitationCode) {
-                return response()->json([
-                    'success' => false,
-                    'message' => null,
-                    'error' => ['code_expired' => 'Invitation code has expired.'],
-                    'data' => null,
-                ], 422);
-            }
+            // if (! $invitationCode) {
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => null,
+            //         'error' => ['code_expired' => 'Invitation code has expired.'],
+            //         'data' => null,
+            //     ], 422);
+            // }
 
-            if ($invitationCode->expiration_date && Carbon::parse($invitationCode->expiration_date)->isPast()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => null,
-                    'error' => ['code_expired' => 'Invitation code has expired.'],
-                    'data' => null,
-                ], 422);
-            }
+            // if ($invitationCode->expiration_date && Carbon::parse($invitationCode->expiration_date)->isPast()) {
+            //     return response()->json([
+            //         'success' => false,
+            //         'message' => null,
+            //         'error' => ['code_expired' => 'Invitation code has expired.'],
+            //         'data' => null,
+            //     ], 422);
+            // }
 
             $existingUser = User::withTrashed()->where('email', $request->email)->first();
             if ($existingUser) {
@@ -322,7 +322,8 @@ class AuthController extends Controller
                     'contact' => $request->contact ?? '',
                     'fcm_token' => $request->fcm_token,
                     'user_status' => '1',
-                    'invitation_code_id' => $invitationCode->id ?? 0,
+                    // 'invitation_code_id' => $invitationCode->id ?? 0,
+                    'invitation_code_id' => 0,
                     'password' => Hash::make($request->password),
                 ]);
 

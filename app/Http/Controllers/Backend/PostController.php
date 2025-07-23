@@ -76,28 +76,29 @@ class PostController extends Controller
         try {
             $authUser = Auth::user();
             $userInterestIds = UserInterest::where('user_id', $authUser->id)->pluck('interest_id')->toArray();
+            $searchText = trim($request->input('description', ''));
 
             $otherPosts = UserPosts::where('user_id', '!=', $authUser->id)
+                ->when(!empty($searchText), function ($query) use ($searchText) {
+                    $query->where(function ($q) use ($searchText) {
+                        $q->whereRaw("MATCH(description) AGAINST(? IN NATURAL LANGUAGE MODE)", [$searchText])
+                            ->orWhere('description', 'LIKE', '%' . $searchText . '%')
+                            ->orWhere('description', 'LIKE', '%' . str_replace(' ', '', $searchText) . '%');
+                    });
+                })
                 ->with('user')
                 ->get();
 
-            $result = $otherPosts->map(function ($post) use ($userInterestIds, $authUser, $request) {
+            $result = $otherPosts->map(function ($post) use ($userInterestIds, $authUser, $searchText) {
                 $postUser = $post->user;
                 $user_profile = UserProfileImage::where('user_id', $postUser->id)->first();
                 $postUserInterestIds = UserInterest::where('user_id', $post->user_id)->pluck('interest_id')->toArray();
 
-                // Field match scoring
-                $matchFields = 0;
+                $matchPercentage = 0;
+                if (!empty($searchText)) {
+                    similar_text(strtolower($post->description), strtolower($searchText), $matchPercentage);
+                }
 
-                if (!empty($request->activity) && strtolower(trim($post->activity)) === strtolower(trim($request->activity))) $matchFields++;
-                if (!empty($request->location) && strtolower(trim($post->location)) === strtolower(trim($request->location))) $matchFields++;
-                if (!empty($request->meet_at) && strtolower(trim($post->meet_at)) === strtolower(trim($request->meet_at))) $matchFields++;
-                if (!empty($request->meet_with) && strtolower(trim($post->meet_with)) === strtolower(trim($request->meet_with))) $matchFields++;
-                if (!empty($request->discussion_topic) && strtolower(trim($post->discussion_topic)) === strtolower(trim($request->discussion_topic))) $matchFields++;
-
-                $matchPercentage = $matchFields * 20;
-
-                // Interest list
                 $interestData = InterestMaster::whereIn('id', $postUserInterestIds)->get()->map(function ($interest) use ($userInterestIds) {
                     return [
                         'interest_name' => $interest->interest_name,
@@ -105,7 +106,6 @@ class PostController extends Controller
                     ];
                 });
 
-                // Mutual connections
                 $mutualConnectionCount = PostController::getMutualConnectionCount($authUser->id, $postUser->id);
                 $is_friend = PostController::isFriend($authUser->id, $postUser->id);
                 $user_info = User::getUserInfo($postUser->id);
@@ -122,24 +122,19 @@ class PostController extends Controller
                     'user_name' => $postUser->name ?? '',
                     'mutual_connection' => $mutualConnectionCount,
                     'is_friend' => $is_friend,
-                    'match_percentage' => $matchPercentage,
+                    'match_percentage' => round($matchPercentage),
                     'user_image' => $user_profile ? $user_profile->image_name : null,
                     'user_interest' => $interestData,
                     'user_info' => $user_info,
                 ];
-            });
+            })->sortByDesc('match_percentage')->values();
 
-            // Filter posts with at least 40% match
             $similarPosts = $result->filter(fn($post) => $post['match_percentage'] >= 40)->values();
 
-            // Pagination using skip and take
             $skip = (int) $request->input('skip', 0);
             $take = (int) $request->input('take', 10);
-
             $paginatedPosts = $similarPosts->slice($skip, $take)->values();
             $total = $similarPosts->count();
-
-            // Calculate current page (1-based)
             $currentPage = $take > 0 ? intval(floor($skip / $take) + 1) : 1;
 
             return response()->json([
@@ -171,27 +166,29 @@ class PostController extends Controller
         try {
             $authUser = Auth::user();
             $userInterestIds = UserInterest::where('user_id', $authUser->id)->pluck('interest_id')->toArray();
+            $searchText = trim($request->input('description', ''));
 
             $otherPosts = UserPosts::where('user_id', '!=', $authUser->id)
+                ->when(!empty($searchText), function ($query) use ($searchText) {
+                    $query->where(function ($q) use ($searchText) {
+                        $q->whereRaw("MATCH(description) AGAINST(? IN NATURAL LANGUAGE MODE)", [$searchText])
+                            ->orWhere('description', 'LIKE', '%' . $searchText . '%')
+                            ->orWhere('description', 'LIKE', '%' . str_replace(' ', '', $searchText) . '%');
+                    });
+                })
                 ->with('user')
                 ->get();
 
-            $result = $otherPosts->map(function ($post) use ($userInterestIds, $authUser, $request) {
+            $result = $otherPosts->map(function ($post) use ($userInterestIds, $authUser, $searchText) {
                 $postUser = $post->user;
                 $user_profile = UserProfileImage::where('user_id', $postUser->id)->first();
                 $postUserInterestIds = UserInterest::where('user_id', $post->user_id)->pluck('interest_id')->toArray();
 
-                // 1. Field match scoring (5 fields = 100%)
-                $matchFields = 0;
-                if (!empty($request->activity) && strtolower(trim($post->activity)) === strtolower(trim($request->activity))) $matchFields++;
-                if (!empty($request->location) && strtolower(trim($post->location)) === strtolower(trim($request->location))) $matchFields++;
-                if (!empty($request->meet_at) && strtolower(trim($post->meet_at)) === strtolower(trim($request->meet_at))) $matchFields++;
-                if (!empty($request->meet_with) && strtolower(trim($post->meet_with)) === strtolower(trim($request->meet_with))) $matchFields++;
-                if (!empty($request->discussion_topic) && strtolower(trim($post->discussion_topic)) === strtolower(trim($request->discussion_topic))) $matchFields++;
+                $matchPercentage = 0;
+                if (!empty($searchText)) {
+                    similar_text(strtolower($post->description), strtolower($searchText), $matchPercentage);
+                }
 
-                $matchPercentage = $matchFields * 20;
-
-                // 2. Prepare interest list
                 $interestData = InterestMaster::whereIn('id', $postUserInterestIds)->get()->map(function ($interest) use ($userInterestIds) {
                     return [
                         'interest_name' => $interest->interest_name,
@@ -199,7 +196,6 @@ class PostController extends Controller
                     ];
                 });
 
-                // 3. Mutual connections
                 $mutualConnectionCount = PostController::getMutualConnectionCount($authUser->id, $postUser->id);
                 $is_friend = PostController::isFriend($authUser->id, $postUser->id);
                 $user_info = User::getUserInfo($postUser->id);
@@ -216,19 +212,19 @@ class PostController extends Controller
                     'user_name' => $postUser->name ?? '',
                     'mutual_connection' => $mutualConnectionCount,
                     'is_friend' => $is_friend,
-                    'match_percentage' => $matchPercentage,
+                    'match_percentage' => round($matchPercentage),
                     'user_image' => $user_profile ? $user_profile->image_name : null,
                     'user_interest' => $interestData,
                     'user_info' => $user_info,
                 ];
-            });
+            })->sortByDesc('match_percentage')->values();
 
-            // Split into similar vs interest match
             $similarPosts = $result->filter(fn($post) => $post['match_percentage'] >= 40)->values();
-            $interestMatches = $result->filter(fn($post) => $post['match_percentage'] < 40 && $post['match_percentage'] >= 20)->values();
-            $interestMatchIds = $interestMatches->pluck('id')->toArray();
-            $similarPostIds = $similarPosts->pluck('id')->toArray();
-            $existingPostIds = array_unique(array_merge($interestMatchIds, $similarPostIds));
+            $interestMatches = $result->filter(fn($post) => $post['match_percentage'] >= 20 && $post['match_percentage'] < 40)->values();
+            $existingPostIds = array_merge(
+                $similarPosts->pluck('id')->toArray(),
+                $interestMatches->pluck('id')->toArray()
+            );
 
             $interestOnlyPosts = UserPosts::where('user_id', '!=', $authUser->id)
                 ->whereNotIn('id', $existingPostIds)
@@ -241,7 +237,6 @@ class PostController extends Controller
                 $postUser = $post->user;
                 $user_profile = UserProfileImage::where('user_id', $postUser->id)->first();
                 $postUserInterestIds = UserInterest::where('user_id', $post->user_id)->pluck('interest_id')->toArray();
-
                 $commonInterests = array_intersect($userInterestIds, $postUserInterestIds);
 
                 if (count($commonInterests) > 0) {
@@ -256,8 +251,7 @@ class PostController extends Controller
                     $is_friend = PostController::isFriend($authUser->id, $postUser->id);
                     $user_info = User::getUserInfo($postUser->id);
 
-
-                    $postData = [
+                    $interestPostsArray[] = [
                         'id' => $post->id,
                         'activity' => $post->activity,
                         'location' => $post->location,
@@ -269,35 +263,28 @@ class PostController extends Controller
                         'user_name' => $postUser->name ?? '',
                         'mutual_connection' => $mutualConnectionCount,
                         'is_friend' => $is_friend,
-                        'match_percentage' => 0, // no field match used
+                        'match_percentage' => 0,
                         'user_image' => $user_profile ? $user_profile->image_name : null,
                         'user_interest' => $interestData,
                         'common_interest_count' => count($commonInterests),
                         'user_info' => $user_info,
                     ];
-
-                    $interestPostsArray[] = $postData;
                 }
             }
 
-            // Sort by common_interest_count descending
-            usort($interestPostsArray, function ($a, $b) {
-                return $b['common_interest_count'] <=> $a['common_interest_count'];
-            });
+            usort($interestPostsArray, fn($a, $b) => $b['common_interest_count'] <=> $a['common_interest_count']);
 
-            // Add sorted posts to interestMatches
             foreach ($interestPostsArray as $postData) {
-                unset($postData['common_interest_count']); // remove helper field
+                unset($postData['common_interest_count']);
                 $interestMatches->push($postData);
             }
-
 
             $skip = (int) $request->input('skip', 0);
             $take = (int) $request->input('take', 10);
             $total = $interestMatches->count();
-
             $paginatedPosts = $interestMatches->slice($skip, $take)->values();
             $currentPage = $take > 0 ? intval(floor($skip / $take) + 1) : 1;
+
             return response()->json([
                 'code' => 200,
                 'message' => 'Post List',
@@ -317,7 +304,6 @@ class PostController extends Controller
             ]);
         }
     }
-
 
     function getMutualConnectionCount($userId1, $userId2)
     {
@@ -400,7 +386,7 @@ class PostController extends Controller
 
                 $matchedInterests = array_intersect($authInterestIds, $postUserInterests);
 
-                 // Interest list
+                // Interest list
                 $interestData = InterestMaster::whereIn('id', $postUserInterests)->get()->map(function ($interest) use ($authInterestIds) {
                     return [
                         'interest_name' => $interest->interest_name,
