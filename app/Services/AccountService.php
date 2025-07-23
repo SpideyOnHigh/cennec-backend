@@ -752,7 +752,7 @@ class AccountService
             ->pluck('reported_user_id')
             ->toArray();
 
-        $connections = $requests->getCollection()->map(function ($request) use ($userId, $blockedUsers, $reportedUsers, $authuserInterestIds) {
+        $connections = $requests->getCollection()->map(function ($request) use ($userId, $blockedUsers, $reportedUsers, $authuserInterestIds,$auth_userId) {
             $user = $request->from_user_id == $userId ? $request->toUser : $request->fromUser;
             if (in_array($user->id, $blockedUsers)) {
                 return null;
@@ -767,7 +767,10 @@ class AccountService
             }
             $user_info = User::getUserInfo($user->id);
             $UserInterestIds = UserInterest::where('user_id', $user->id)->pluck('interest_id')->toArray();
-
+            // GEt User Is Favourite
+             $is_favourite = UserFavourite::where('favorited_by_user_id', $auth_userId)
+                ->where('favorited_user_id', $user->id)
+                ->exists() ? true : false;
             // Interest list
             $interestData = InterestMaster::whereIn('id', $UserInterestIds)->get()->map(function ($interest) use ($authuserInterestIds) {
                 return [
@@ -783,6 +786,7 @@ class AccountService
                 'default_profile_picture' => $default_profile_picture,
                 'user_info' => $user_info,
                 'user_interest' => $interestData,
+                'is_favourite' => $is_favourite,
                 'profile_images' => $user->profileImages->map(function ($image) {
                     return [
                         'image_id' => $image->id,

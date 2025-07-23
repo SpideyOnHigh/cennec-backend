@@ -496,25 +496,25 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $code = InvitationCodeMaster::where('code', $request->invitation_code)->first();
-        if (is_null($code)) {
-            return response()->json([
-                'success' => false,
-                'message' => null,
-                'error' => ['failed' => 'The invitation code is not valid or has expired.'],
-                'data' => null,
-            ], 422);
-        }
-        $maxUser = $code->max_user_allow;
-        $allotedUser = User::where('invitation_code_id', $code->id)->count();
-        if ($allotedUser >= $maxUser) {
-            return response()->json([
-                'success' => false,
-                'message' => null,
-                'error' => ['failed' => 'The invitation code is not valid or has expired.'],
-                'data' => null,
-            ], 422);
-        }
+        // $code = InvitationCodeMaster::where('code', $request->invitation_code)->first();
+        // if (is_null($code)) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => null,
+        //         'error' => ['failed' => 'The invitation code is not valid or has expired.'],
+        //         'data' => null,
+        //     ], 422);
+        // }
+        // $maxUser = $code->max_user_allow;
+        // $allotedUser = User::where('invitation_code_id', $code->id)->count();
+        // if ($allotedUser >= $maxUser) {
+        //     return response()->json([
+        //         'success' => false,
+        //         'message' => null,
+        //         'error' => ['failed' => 'The invitation code is not valid or has expired.'],
+        //         'data' => null,
+        //     ], 422);
+        // }
 
         $otp = rand(1000, 9999);
 
