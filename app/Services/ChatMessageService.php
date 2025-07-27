@@ -102,7 +102,8 @@ class ChatMessageService
             ->select(
                 'users.*',
                 'um.message_content as last_message',
-                'um.updated_at as latest_message_time'
+                'um.updated_at as latest_message_time',
+                'um.status'
             )
             ->where('users.id', '!=', $userId)
             ->orderByDesc('um.updated_at')
