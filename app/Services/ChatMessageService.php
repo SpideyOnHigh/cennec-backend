@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\UserMessages;
 use App\Models\UserProfileImage;
+use Illuminate\Support\Facades\DB;
 
 class ChatMessageService
 {
@@ -103,7 +104,8 @@ class ChatMessageService
                 'users.*',
                 'um.message_content as last_message',
                 'um.updated_at as latest_message_time',
-                'um.status'
+                'um.status',
+                DB::raw("CASE WHEN um.sender_user_id = $userId THEN true ELSE false END as is_me")
             )
             ->where('users.id', '!=', $userId)
             ->orderByDesc('um.updated_at')
