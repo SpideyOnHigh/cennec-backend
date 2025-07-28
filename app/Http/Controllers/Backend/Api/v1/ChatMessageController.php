@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Backend\Api\v1;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\UserBlock;
+use App\Models\UserMessages;
 use App\Models\UserReport;
 use App\Models\UserRequest;
 use App\Services\ChatMessageService;
 use App\Services\GeneralService;
+use Illuminate\Container\Attributes\Auth;
 use Illuminate\Http\Request;
 use Validator;
 
@@ -155,7 +157,12 @@ class ChatMessageController extends Controller
             $sortOrder
         );
 
-        $formattedMessages = $messages->map(function ($message, $isUserReported) {
+        $formattedMessages = $messages->map(function ($message, $isUserReported)use ($request) {
+            if ($message->sender_user_id == $request->from_user_id && $message->status == 'sent') {
+                $message->status = 'read';
+                UserMessages::where('id', $message->id)->update(['status' => 'read']);
+            }
+                
             $createdAt = $message->created_at;
             $date = $createdAt->format('Y-m-d');
             $time = $createdAt->format('h:i:s A');
