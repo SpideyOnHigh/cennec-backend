@@ -584,8 +584,8 @@ class AccountService
                     'id' => $notificationCreated->id,
                     'notification_type' => 'connection_request',
                     'sender_user_id' => $requestData['from_user_id'],
-                    // 'message_content' => $requestData['request_comment'],
-                    'message_content' => $senderUserName . ' sent you a request',
+                    'message_content' => $requestData['request_comment'],
+                    // 'message_content' => $senderUserName . ' sent you a request',
                     'user_profile_image' => $notificationData['user_profile_image'],
                     'deviceToken' => $receiverDeviceToken,
                 ];
