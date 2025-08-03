@@ -443,4 +443,99 @@ class PostController extends Controller
             ]);
         }
     }
+
+    public function getUserAllPosts(Request $request)
+    {
+        try {
+            $authUser = Auth::user();
+
+            $authInterestIds = UserInterest::where('user_id', $authUser->id)
+                ->pluck('interest_id')
+                ->toArray();
+
+            // Request inputs
+            $skip = $request->skip ?? 0;
+            $take = $request->take ?? 10;
+            $orderBy = $request->order_by ?? 'created_at';
+            $sortDirection = $request->sort ?? 'desc';
+
+            // Fetch only authenticated user's posts
+            $allPosts = UserPosts::where('user_id', $authUser->id)
+                ->with('user')
+                ->get();
+
+            // Filter posts that have at least one interest
+            $filtered = $allPosts->filter(function ($post) use ($authInterestIds) {
+                $postUserInterests = UserInterest::where('user_id', $post->user_id)
+                    ->pluck('interest_id')
+                    ->toArray();
+
+                $matchedInterests = array_intersect($authInterestIds, $postUserInterests);
+
+                return count($matchedInterests) > 0;
+            })->values();
+
+            // Process and format posts
+            $processed = $filtered->map(function ($post) use ($authInterestIds, $authUser) {
+                $postUserInterests = UserInterest::where('user_id', $post->user_id)
+                    ->pluck('interest_id')
+                    ->toArray();
+
+                $matchedInterests = array_intersect($authInterestIds, $postUserInterests);
+
+                // Interest list
+                $interestData = InterestMaster::whereIn('id', $postUserInterests)->get()->map(function ($interest) use ($authInterestIds) {
+                    return [
+                        'interest_name' => $interest->interest_name,
+                        'interest_match' => in_array($interest->id, $authInterestIds),
+                    ];
+                });
+
+                $user_profile = UserProfileImage::where('user_id', $post->user_id)
+                    ->where('is_default', true)->first();
+
+                return [
+                    'id' => $post->id,
+                    'user_id' => $post->user_id,
+                    'user_name' => $post->user->name ?? '',
+                    'activity' => $post->activity,
+                    'location' => $post->location,
+                    'meet_at' => $post->meet_at,
+                    'meet_with' => $post->meet_with,
+                    'discussion_topic' => $post->discussion_topic,
+                    'description' => $post->description,
+                    'created_at' => $post->created_at,
+                    'interest_match_count' => count($matchedInterests),
+                    'user_interest' => $interestData,
+                    'user_image' => $user_profile ? concatAppUrl($user_profile->image_name) : null,
+                    'is_friend' => false,
+                ];
+            });
+
+            // Sort posts
+            $sorted = $processed->sortBy([[$orderBy, $sortDirection]])->values();
+
+            // Pagination
+            $paginated = $sorted->slice($skip, $take)->values();
+            $total = $sorted->count();
+            $currentPage = floor($skip / $take) + 1;
+
+            return response()->json([
+                'code' => 200,
+                'message' => 'My Post List',
+                'data' => $paginated,
+                'count' => $paginated->count(),
+                'total' => $total,
+                'current_page' => $currentPage,
+                'per_page' => $take,
+            ]);
+        } catch (Exception $e) {
+            report($e);
+            return response()->json([
+                'code' => 500,
+                'message' => 'Something went wrong.',
+                'data' => [],
+            ]);
+        }
+    }
 }

@@ -96,4 +96,5 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/get-similar-posts', [PostController::class, 'getSimilatPost']);
     Route::post('/get-interest-matched-posts', [PostController::class, 'getInterestMatchedPosts']);
     Route::post('/get-all-posts', [PostController::class, 'getAllPosts']);
+    Route::post('/get-all-user-posts', [PostController::class, 'getUserAllPosts']);
 });
