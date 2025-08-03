@@ -212,7 +212,8 @@ class AuthController extends Controller
                 'regex:/[A-Z]/',          // At least one uppercase letter
                 'regex:/[a-z]/',          // At least one lowercase letter
                 'regex:/[0-9]/',          // At least one number
-                'regex:/[@$!%*?&]/',      // At least one special character
+                // 'regex:/[@$!%*?&]/',
+                'regex:/[^A-Za-z0-9]/',     // At least one special character
             ],
             'confirm_password' => 'same:password',
             'dob' => 'required|date_format:m-d-Y',
