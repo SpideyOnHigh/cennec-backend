@@ -362,8 +362,7 @@ class PostController extends Controller
             $sortDirection = $request->sort ?? 'desc';
 
             // All posts (excluding auth user)
-            $allPosts = UserPosts::where('user_id', '!=', $authUser->id)
-                ->with('user')
+            $allPosts = UserPosts::with('user')
                 ->get();
 
             // Filter and process only posts that have interest matches
